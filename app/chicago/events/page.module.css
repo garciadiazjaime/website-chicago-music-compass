@@ -1,0 +1,30 @@
+@media (max-width: 700px) {
+  .h1 {
+    display: none;
+  }
+
+  .intro > *{
+    font-size: 20px;
+  }
+
+  .intro {
+    height: 90vh !important;
+  }
+}
+
+.socialMediaLogo svg{
+  height: 60px;
+  width: 100%;
+  padding: 12px;
+}
+
+.mainContent {
+  opacity: 1;
+  animation: fadeIn 1.42s;
+}
+
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}

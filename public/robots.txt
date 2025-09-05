@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /venue
+Disallow: /chicago/stats
