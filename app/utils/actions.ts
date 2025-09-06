@@ -1,6 +1,6 @@
 "use server";
 
-import { Event } from "@/support/types";
+import { Event } from "@/app/utils/types";
 
 export const getEvents = async () => {
   const res = await fetch(

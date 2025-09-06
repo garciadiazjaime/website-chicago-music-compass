@@ -5,7 +5,7 @@ import { GoogleMap, LoadScriptNext, Marker } from "@react-google-maps/api";
 
 import { useEvents } from "@/app/context/Events";
 import { loggerInfo } from "@/app/utils/logger";
-import { Event } from "@/support/types";
+import { Event } from "@/app/utils/types";
 
 export default function Map() {
     const {

@@ -1,0 +1,401 @@
+import { Mermaid } from "mdx-mermaid/lib/Mermaid";
+import Script from "next/script";
+import { codeToHtml } from "shiki";
+import ArticleLayout from "@/v1/components/ArticleLayout";
+
+<style jsx="true" global="true">{`
+  pre {
+    overflow-x: scroll;
+    font-size: 24px;
+    margin: 0;
+    padding: 6px;
+  }
+
+  svg {
+    max-width: none !important;
+  }
+`}</style>
+
+<ArticleLayout title="CMC Blog">
+# Chicago Music Compass
+
+<small>
+  <strong>
+    Author: Jaime Garcia Diaz <br />
+    May 2024
+  </strong>
+</small>
+
+<Script
+  type="module"
+  strategy="afterInteractive"
+  dangerouslySetInnerHTML={{
+    __html: `
+        import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@9/dist/mermaid.esm.min.mjs";
+        mermaid.initialize({startOnLoad: true});
+        mermaid.contentLoaded();
+`,
+  }}
+/>
+
+
+## Intro
+
+The goal is to provide a quick overview of music events happening in Chicago in the coming days.
+
+Many aggregator websites effectively display calendars of events, spanning not only the near future but also months and even years ahead.
+However, Chicago Music Compass doesn't aim to compete with such aggregators. Instead, it focuses solely on the current week. Visitors will see at most seven days of events, with fewer days displayed as the week progresses. This cycle repeats each week.
+
+The mission of Chicago Music Compass is to answer the question: **Which concert should I attend this week?**
+
+Chicago offers a diverse range of music events, spanning multiple genres, atmospheres, and price ranges.
+
+## Website
+
+<img src="/blog/how-cmc-was-built/website.png" style={{width: '100%', maxWidth: 800}}  alt="Chicago Music Compass Website" />
+
+## Architecture Components
+
+
+<Mermaid
+  chart={`flowchart TD
+    id1[(MySql)]
+    id2[RESTful API]
+    id3[ETL]
+    `}
+/>
+<br /><br /><br />
+<Mermaid
+  chart={`flowchart TD
+    id4[Web Application]
+    id5[Serverless]
+    id6[CDN]
+    `}
+/>
+<br /><br /><br />
+<Mermaid
+  chart={`flowchart TD
+    id7[Sources]
+    id8[Google Maps API]
+    id9[MusicBrainz]
+    `}
+/>
+<br /><br /><br />
+<Mermaid
+  chart={`flowchart TD
+    id10[Spotify]
+    id11[Redis]
+    id12[Netlify]
+    `}
+/>
+
+## ETLs
+
+The data is extracted primarily from two sources:
+
+- RESTful APIs
+- Scrapers
+
+Each source has an ETL process that transforms the external data into the expected format.
+
+A cron job runs all the ETL processes daily, one after the other (in series).
+
+<Mermaid
+  config={{ mermaid: { theme: "dark" } }}
+  chart={`sequenceDiagram
+    participant ETL
+    participant External Source
+    Note right of ETL: nodejs script
+    Note right of External Source: HTML or JSON
+    Note right of API: Django Rest Framework
+    Note right of DB: MySQL
+    ETL->>External Source: extract content
+    ETL->>ETL:transform content
+    ETL->>API:load content
+    API->>DB:save content`}
+/>
+
+There's a cron that runs all the ETLs daily, one after the other (in series).
+
+## ETL
+
+Each ETL process uses similar helper methods to interact with external services.
+
+Once the event is extracted, the script tries to identify the **Venue and Artists**.
+
+For the **Venue**, the ETL makes a request to the Google Maps API, passing the name of the venue and a radius. If Google Maps identifies the venue, the process continues; otherwise, the event is discarded. One rule is that all events must have an identifiable venue.
+
+For the **Artists**, the ETL makes a request to MusicBrainz, an open-source artist library. If the artist is found, the artist is saved in the database. If the artist is not found, the event is still saved but without an identifiable artist.
+
+Additionally, if the artist is found, another request is made to Spotify to get more information about the artist.
+
+<Mermaid
+  config={{ mermaid: { theme: "dark" } }}
+  chart={`sequenceDiagram
+    participant ETL
+    participant GoogleMaps
+    participant MusicBrainz
+    participant Spotify
+    Note right of MusicBrainz: provides metadata
+    ETL->>GoogleMaps: find venue
+    ETL->>MusicBrainz: find artist
+    ETL->>Spotify: find artist`}
+/>
+
+### Learnings
+
+- Google Maps
+
+```js
+const params = {
+  input: event.venue,
+  inputtype: "textquery",
+  key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+  fields: ["place_id", "name", "formatted_address", "geometry"],
+  locationbias: "circle:20000@41.8336152,-87.8967663",
+};
+
+await sleep();
+
+const client = new Client({});
+
+const gmapsResponse = await client
+  .findPlaceFromText({ params })
+```
+
+- MusicBrainz artist search
+
+```js
+const { compareTwoStrings } = require("string-similarity");
+
+const isMatch = (valueFromEvent, valueFromMusicBrainz) => {
+  const result = compareTwoStrings(valueFromEvent, valueFromMusicBrainz);
+
+  return result > 0.5;
+}
+```
+
+**Note**: string-similarity is deprecated but still has 1.5M weekly downloads.
+
+- Redis
+```js
+const client = await redis.connect();
+await client.set("token", value, { EX: 60 * 60 });
+
+...
+
+const myQueue = new Queue("livemusic");
+```
+
+## Back End
+
+
+- Django REST Framework
+```python
+# Model
+class Event(models.Model):
+    name = models.CharField(max_length=240)
+    ...
+
+# Serializer
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+
+    def create(self, validated_data):
+      ...
+
+# View
+class EventViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    generics.GenericAPIView,
+):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+
+    def get(self, request, *args, **kwargs):
+        if "pk" in kwargs:
+            return self.retrieve(request, *args, **kwargs)
+
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+# URL
+path("/events", EventViewSet.as_view())
+```
+
+<br /><br /><br />
+<img src="/blog/how-cmc-was-built/django-admin.png" style={{width: '100%', maxWidth: 800}}  alt="Chicago Music Compass Django Admin Section" />
+
+
+## Static Website
+
+The website is built with Next.js, which has a way to export the site as a static site. This means there is no server, just **HTML, CSS, and JS** files.
+These files are uploaded to a static server, and Netlify takes care of this.
+
+When Next.js generates the static version, it pulls the JSON hosted in S3 to build the HTML. The client code also consumes the same JSON file to hydrate the application with the events for the other days of the week.
+
+- Publish
+
+<Mermaid
+  config={{ mermaid: { theme: "dark" } }}
+  chart={`sequenceDiagram
+    Netlify->>Github: get code
+    Netlify->>Netlify: build
+    Netlify->>CDN: get events
+    Netlify->>AWS: publish site
+  `}
+/>
+
+- Opening Site
+
+<Mermaid
+  config={{ mermaid: { theme: "dark" } }}
+  chart={`sequenceDiagram
+    participant Browser
+    participant CDN
+    participant lambda
+    participant Cloudfront
+
+    Note right of lambda: nodejs
+
+    Browser->>CDN: load page
+    Browser->>lambda: fetch events
+    Note right of Browser: useEffect
+    lambda->>Cloudfront: fetch events
+
+    lambda->>Browser: events
+
+    Browser->>Browser: hydrate application
+  `}
+/>
+
+
+## Reset
+
+A daily job hits the API to get the events for the following seven days, then saves this data into an S3 bucket. This data is later used by Netlify to generate a new version of the web application.
+
+
+<Mermaid
+  config={{ mermaid: { theme: "dark" } }}
+  chart={`sequenceDiagram
+    participant Reset
+    participant API
+    participant S3
+    participant Cloudfront
+
+    Note right of Reset: nodejs script
+
+    Reset->>API: get events
+    Reset->>S3: Upload events.json
+    Reset->>Cloudfront: invalidate cache
+    Reset->>Netlify: trigger build job`}
+/>
+
+
+## Page Speed
+
+The page is optimized and aims to score high on the Page Speed metrics. To achieve this, the following implementations were made:
+
+- Static Site
+
+By not having a server, the static site is easily hosted on a CDN, making the First Byte Response fast.
+
+
+- Simplistic Above the Fold Presentation
+
+The content above the fold is very simple. The intention here is to avoid slow paints, improving First Contentful Paint (FCP) and Largest Contentful Paint (LCP).
+
+- Inline Styles
+
+This ensures the HTML comes prepared with styles, reducing jumps due to downloading and processing CSS.
+
+- Lazy load Images
+
+Next.js, by default, lazy loads images that are not in the viewport. This helps to delay network requests and processing time until images are close to the viewport.
+
+<img src="/blog/how-cmc-was-built/page-speed.png" style={{width: '100%', maxWidth: 800}} alt="Chicago Music Compass PageSpeed score"/>
+
+## Machine Learning
+
+Considering there is information about the artists, such as their social networks, a model was built to use that data to predict their popularity. This value is used on the website to sort the events.
+
+<Mermaid
+  chart={`flowchart LR
+      A[Fetch]-->B[Clean]
+      B-->C[Split]
+      C-->D[Model]
+      `}
+/>
+
+<Mermaid
+  chart={`flowchart LR
+      E[Train]-->F[Evaluate]
+      F-->G[Predict]
+      G-->H[Save]`}
+/>
+
+- python
+```python
+# fetch
+dataset = pd.read_csv("./data/artists.csv")
+
+# clean
+dataset = cleaned_data(dataset)
+
+# split
+train_features, test_features, train_labels, test_labels = get_split_data(dataset)
+
+# train
+model = get_model(train_features, train_labels)
+# tf.keras.Sequential([normalized_dataset, layers.Dense(units=1)])
+
+# evaluate
+model.evaluate(test_features, test_labels)
+
+# predict
+model.predict(x)
+
+# save
+model.save()
+model.export()
+```
+
+- JS
+```js
+const model = await tf.loadGraphModel('model.json');
+
+const prediction = model.predict(x);
+```
+
+
+## Links
+
+<img src="/blog/how-cmc-was-built/qr-code.svg" style={{width: '100%', maxWidth: 800}} alt="Chicago Music Compass Presentation"/>
+
+- [Discord](https://discord.com/channels/1099362050855149638/1099362050855149641)
+
+- [How popular are you?](https://www.chicagomusiccompass.com/labs/artist-popularity-prediction)
+
+- [Artists Popularity Model](https://www.chicagomusiccompass.com/blog/artists-popularity-model)
+
+- [React Global Online Summit 2024](https://events.geekle.us/react24/)
+
+- [Github](https://github.com/garciadiazjaime/website-live-music)
+
+- [events.json](https://d2r5kaieomhckh.cloudfront.net/public/events.json)
+
+## Contributors
+
+- [Jaime Garcia Diaz](https://jaime.mintitmedia.com/) <small>[Chicago]</small>
+
+- [Alex Romo](https://alex.mintitmedia.com/) <small>[San Diego]</small>
+
+- [Octavio Fuentes](https://www.linkedin.com/in/octavio-fuentes-arce/) <small>[Mexico City]</small>
+
+</ArticleLayout>
+

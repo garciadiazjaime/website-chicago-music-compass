@@ -17,7 +17,7 @@ export default function InitEvents() {
         }
 
         init()
-    }, []);
+    }, [setEvents]);
 
     return <></>;
 }

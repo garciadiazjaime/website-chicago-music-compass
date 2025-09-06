@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 
-import StyledJsxRegistry from "./registry";
-
 const inter = Poppins({
   weight: ["400", "700"],
   style: ["normal", "italic"],
@@ -31,7 +29,7 @@ export default function RootLayout({
           marginBottom: 0,
         }}
       >
-        <StyledJsxRegistry>{children}</StyledJsxRegistry>
+        {children}
       </body>
     </html>
   );

@@ -1,4 +1,4 @@
-import { Event } from "@/support/types";
+import { Event } from "@/app/utils/types";
 import { loggerInfo, loggerError } from "@/app/utils/logger";
 
 export const openDatabase = (

@@ -8,7 +8,7 @@ import React, {
     useEffect,
 } from "react";
 
-import { Event } from "@/support/types";
+import { Event } from "@/app/utils/types";
 import { loggerWarn } from "../utils/logger";
 
 type EventsContextType = {
