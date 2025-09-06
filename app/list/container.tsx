@@ -137,7 +137,7 @@ export default function Home({
 
   return (
     <>
-      <div style={{ textAlign: "center", maxWidth: 780, margin: "0 auto" }}>
+      {/* <div style={{ textAlign: "center", maxWidth: 780, margin: "0 auto" }}>
         {genres.map(([genre]) => (
           <span
             key={genre}
@@ -155,7 +155,7 @@ export default function Home({
             {genre}
           </span>
         ))}
-      </div>
+      </div> */}
       <Nav>
         <DayPicker
           selectedDate={selectedDate}
