@@ -4,7 +4,8 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { GoogleMap, LoadScriptNext, Marker } from "@react-google-maps/api";
 
 import { useEvents } from "@/app/context/Events";
-import { loggerInfo } from "../utils/logger";
+import { loggerInfo } from "@/app/utils/logger";
+import { Event } from "@/support/types";
 
 export default function Map() {
     const {
@@ -40,6 +41,10 @@ export default function Map() {
         }
     }, [events, setVisibleEvents]);
 
+    const markerClickHandler = (event: Event) => {
+        window.open(event.url, "_blank");
+    };
+
     useEffect(() => {
         updateVisibleEvents();
     }, [events, updateVisibleEvents]);
@@ -53,18 +58,19 @@ export default function Map() {
                         height: "100%",
                     }}
                     center={center}
-                    zoom={16}
+                    zoom={13}
                     onLoad={handleOnLoad}
                     onTilesLoaded={updateVisibleEvents}
                     onCenterChanged={updateVisibleEvents}
                     onZoomChanged={updateVisibleEvents}
                 >
-                    {events.map((event, index) => (
+                    {events.map((event) => (
                         <Marker
-                            key={index}
+                            key={event.pk}
                             position={{ lat: event.location.lat, lng: event.location.lng }}
                             title={event.name}
                             icon={"/images/marker.webp"}
+                            onClick={() => markerClickHandler(event)}
                         />
                     ))}
                 </GoogleMap>

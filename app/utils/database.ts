@@ -1,5 +1,5 @@
 import { Event } from "@/support/types";
-import { loggerInfo } from "@/app/utils/logger";
+import { loggerInfo, loggerError } from "@/app/utils/logger";
 
 export const openDatabase = (
   dbName: string,
@@ -24,7 +24,7 @@ export const openDatabase = (
     };
 
     dbRequest.onerror = (event) => {
-      console.error("IndexedDB Error:", event);
+      loggerError("error opening database", { event });
       reject(new Error("Error opening IndexedDB"));
     };
   });
@@ -38,6 +38,30 @@ export const fetchAllRecords = (db: IDBDatabase, objectStoreName: string) => {
     const request = store.getAll();
     request.onsuccess = () => {
       resolve(request.result as Event[]);
+    };
+
+    request.onerror = () => {
+      reject([]);
+    };
+  });
+};
+
+export const fetchTodayRecords = (
+  db: IDBDatabase,
+  objectStoreName: string,
+  filterByDate: string
+) => {
+  return new Promise<Event[]>((resolve, reject) => {
+    const transaction = db.transaction(objectStoreName, "readonly");
+    const store = transaction.objectStore(objectStoreName);
+
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const events = (request.result as Event[]).filter((event) => {
+        const eventDate = new Date(event.start_date).toLocaleDateString();
+        return eventDate === filterByDate;
+      });
+      resolve(events);
     };
 
     request.onerror = () => {
@@ -75,7 +99,7 @@ export const populateDatabase = async (events: Event[]) => {
 
     loggerInfo("Database populated", { count: events.length });
   } catch (error) {
-    console.error(error);
+    loggerError("error populating database", { error });
   }
 };
 
@@ -84,10 +108,12 @@ export const setPlacesFromDatabase = async (
 ) => {
   try {
     const db = await openDatabase("EventsDB", 1, "events");
-    const data = await fetchAllRecords(db, "events");
 
+    const today = new Date().toLocaleDateString();
+    const data = await fetchTodayRecords(db, "events", today);
+    loggerInfo("events found for today", { count: data.length });
     setEvents(data);
   } catch (error) {
-    console.error(error);
+    loggerError("error fetching database", { error });
   }
 };

@@ -9,6 +9,7 @@ import React, {
 } from "react";
 
 import { Event } from "@/support/types";
+import { loggerWarn } from "../utils/logger";
 
 type EventsContextType = {
     mapLoaded: boolean;
@@ -30,8 +31,8 @@ export const EventsProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         if (!mapLoaded) {
-            console.warn("Map is not loaded yet, skipping filter update.");
-            return; // Skip filter update if map is not loaded
+            loggerWarn("Map is not loaded yet, skipping filter update.");
+            return;
         }
 
     }, [mapLoaded, visibleEvents]);
