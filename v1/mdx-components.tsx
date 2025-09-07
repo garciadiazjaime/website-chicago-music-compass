@@ -2,8 +2,6 @@ import type { MDXComponents } from "mdx/types";
 import Image, { ImageProps } from "next/image";
 import { codeToHtml } from "shiki";
 
-import { tokens } from "@/v1/support/token";
-
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
     h1: ({ children }) => (

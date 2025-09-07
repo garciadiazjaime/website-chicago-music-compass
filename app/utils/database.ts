@@ -1,5 +1,5 @@
 import { Event } from "@/app/utils/types";
-import { loggerInfo, loggerError } from "@/app/utils/logger";
+import { loggerInfo, loggerError, loggerWarn } from "@/app/utils/logger";
 import { getEvents } from "@/app/utils/actions";
 
 export const openDatabase = (
@@ -127,10 +127,48 @@ export const setPlacesFromDatabase = async (
   try {
     const db = await openDatabase("EventsDB", 1, "events");
 
-    const today = new Date().toLocaleDateString();
+    const today = new Date().toLocaleDateString("en-US", {
+      timeZone: "America/Chicago",
+    });
     const data = await fetchTodayRecords(db, "events", today);
-    loggerInfo("events found for today", { count: data.length });
-    setEvents(data);
+
+    // Filter events by time in Chicago timezone
+    const nowInChicago = new Date().toLocaleString("en-US", {
+      timeZone: "America/Chicago",
+    });
+    const now = new Date(nowInChicago);
+
+    const filteredData = data.filter((event) => {
+      const eventTimeInChicago = new Date(event.start_date).toLocaleString(
+        "en-US",
+        {
+          timeZone: "America/Chicago",
+        }
+      );
+
+      const eventDateTime = new Date(eventTimeInChicago);
+
+      // Check if the event is not at the beginning of the day and is in the future
+      const isBeginningOfDay =
+        eventDateTime.getHours() == 0 && eventDateTime.getMinutes() == 0;
+
+      const isEventInTime = eventDateTime >= now || isBeginningOfDay;
+
+      if (!isEventInTime) {
+        loggerWarn(
+          "event filtered out (past event or beginning of day)",
+          event
+        );
+        return false;
+      }
+
+      return true;
+    });
+
+    loggerInfo("events found for today after filtering", {
+      count: filteredData.length,
+    });
+    setEvents(filteredData);
   } catch (error) {
     loggerError("error fetching database", { error });
   }
