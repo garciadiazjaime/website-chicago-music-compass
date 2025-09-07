@@ -19,9 +19,17 @@ type EventsContextType = {
     setEvents: (events: Event[]) => void;
     visibleEvents: Event[];
     setVisibleEvents: (Events: Event[]) => void;
+
+    center: { lat: number; lng: number };
+    setCenter: (center: { lat: number; lng: number }) => void;
+    zoom: number;
+    setZoom: (zoom: number) => void;
 };
 
 const EventsContext = createContext<EventsContextType | undefined>(undefined);
+
+export const CHICAGO_COORDS = { lat: 41.8781, lng: -87.6298 };
+export const DEFAULT_ZOOM = 13;
 
 export const EventsProvider = ({ children }: { children: ReactNode }) => {
     const [mapLoaded, setMapLoaded] = useState<boolean>(false);
@@ -29,12 +37,14 @@ export const EventsProvider = ({ children }: { children: ReactNode }) => {
     const [events, setEvents] = useState<Event[]>([]);
     const [visibleEvents, setVisibleEvents] = useState<Event[]>([]);
 
+    const [center, setCenter] = useState<{ lat: number; lng: number }>(CHICAGO_COORDS);
+    const [zoom, setZoom] = useState<number>(DEFAULT_ZOOM);
+
     useEffect(() => {
         if (!mapLoaded) {
             loggerWarn("Map is not loaded yet, skipping filter update.");
             return;
         }
-
     }, [mapLoaded, visibleEvents]);
 
     return (
@@ -47,6 +57,11 @@ export const EventsProvider = ({ children }: { children: ReactNode }) => {
                 setEvents,
                 visibleEvents,
                 setVisibleEvents,
+
+                center,
+                setCenter,
+                zoom,
+                setZoom,
             }}
         >
             {children}

@@ -9,17 +9,15 @@ import { Event } from "@/app/utils/types";
 
 export default function Map() {
     const {
+        center,
         events,
         setVisibleEvents,
-        setMapLoaded
+        setMapLoaded,
+        zoom,
     } = useEvents();
 
     const mapRef = useRef<google.maps.Map | null>(null);
 
-    const [center] = useState({
-        lat: 41.8777569,
-        lng: -87.6271142,
-    });
 
     const handleOnLoad = (map: google.maps.Map) => {
         mapRef.current = map;
@@ -47,7 +45,7 @@ export default function Map() {
 
     useEffect(() => {
         updateVisibleEvents();
-    }, [events, updateVisibleEvents]);
+    }, [events, updateVisibleEvents, center]);
 
     return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -58,7 +56,7 @@ export default function Map() {
                         height: "100%",
                     }}
                     center={center}
-                    zoom={13}
+                    zoom={zoom}
                     onLoad={handleOnLoad}
                     onTilesLoaded={updateVisibleEvents}
                     onCenterChanged={updateVisibleEvents}

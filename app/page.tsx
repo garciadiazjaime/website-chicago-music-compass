@@ -2,6 +2,7 @@ import Map from "@/app/components/Map";
 import InitEvents from "@/app/components/InitEvents";
 import { EventsProvider } from "@/app/context/Events";
 import { tokens } from "@/app/utils/tokens";
+import Filters from "@/app/components/Filters";
 
 export default async function Page() {
     return <div>
@@ -9,6 +10,7 @@ export default async function Page() {
             <div style={{ display: "flex", backgroundColor: tokens.color.primary, color: tokens.color.white }}>
                 <div style={{ width: 200, padding: "0 20px" }}>
                     <h1>Today Live Music Events</h1>
+                    <Filters />
                 </div>
                 <div style={{ width: "100vw", height: "100vh" }}>
                     <Map />
