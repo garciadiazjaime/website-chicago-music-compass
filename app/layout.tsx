@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { GoogleAnalytics } from '@next/third-parties/google'
 
 const inter = Poppins({
   weight: ["400", "700"],
@@ -29,6 +30,7 @@ export default function RootLayout({
           marginBottom: 0,
         }}
       >
+        <GoogleAnalytics gaId="G-KZCQP5FKYK" />
         {children}
       </body>
     </html>
