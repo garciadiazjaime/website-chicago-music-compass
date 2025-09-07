@@ -1,5 +1,6 @@
 import { Event } from "@/app/utils/types";
 import { loggerInfo, loggerError } from "@/app/utils/logger";
+import { getEvents } from "@/app/utils/actions";
 
 export const openDatabase = (
   dbName: string,
@@ -86,7 +87,22 @@ const clearObjectStore = (db: IDBDatabase, objectStoreName: string) => {
   });
 };
 
-export const populateDatabase = async (events: Event[]) => {
+export const populateDatabase = async () => {
+  const lastUpdate = localStorage.getItem("cmc_db_last_updated");
+  if (lastUpdate) {
+    const lastUpdateDate = new Date(lastUpdate);
+    const now = new Date();
+    const diffInHours =
+      Math.abs(now.getTime() - lastUpdateDate.getTime()) / 36e5;
+    if (diffInHours < 24) {
+      loggerInfo("Database recently updated, skipping population");
+      return;
+    }
+  }
+
+  loggerInfo("fetching events from server");
+  const events: Event[] = await getEvents();
+
   try {
     const db = await openDatabase("EventsDB", 1, "events");
     await clearObjectStore(db, "events");
@@ -96,6 +112,8 @@ export const populateDatabase = async (events: Event[]) => {
       const store = transaction.objectStore("events");
       store.put(event);
     });
+
+    localStorage.setItem("cmc_db_last_updated", new Date().toISOString());
 
     loggerInfo("Database populated", { count: events.length });
   } catch (error) {
